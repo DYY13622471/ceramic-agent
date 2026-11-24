@@ -6,6 +6,7 @@ learning/llm_client.py — 本地 Ollama LLM 客户端(全本地, 不碰云端)
 供 learn 提炼方法、refine_loop 归因修正使用。纯标准库 urllib，无第三方依赖。
 """
 import json
+import urllib.error
 import urllib.request
 
 
@@ -30,24 +31,32 @@ class OllamaClient:
         data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         req = urllib.request.Request(self.url, data=data,
                                      headers={"Content-Type": "application/json"})
-        with urllib.request.urlopen(req, timeout=self.timeout) as resp:
-            parts = []
-            buf = b""
-            for raw in resp:
-                buf += raw
-                # 逐行解析 NDJSON
-                while b"\n" in buf:
-                    line, buf = buf.split(b"\n", 1)
-                    if not line.strip():
-                        continue
-                    try:
-                        obj = json.loads(line.decode("utf-8"))
-                    except Exception:
-                        continue
-                    parts.append(obj.get("response", ""))
-                    if obj.get("done"):
-                        return "".join(parts).strip()
-        return "".join(parts).strip()
+        try:
+            with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+                parts = []
+                buf = b""
+                for raw in resp:
+                    buf += raw
+                    # 逐行解析 NDJSON
+                    while b"\n" in buf:
+                        line, buf = buf.split(b"\n", 1)
+                        if not line.strip():
+                            continue
+                        try:
+                            obj = json.loads(line.decode("utf-8"))
+                        except Exception:
+                            continue
+                        parts.append(obj.get("response", ""))
+                        if obj.get("done"):
+                            return "".join(parts).strip()
+            return "".join(parts).strip()
+        except urllib.error.HTTPError as exc:
+            # 把 Ollama 返回的错误正文带出来, 否则上层只能看到 HTTPError 500
+            try:
+                body = exc.read().decode("utf-8", "replace").strip()
+            except Exception:
+                body = ""
+            raise RuntimeError("Ollama HTTP %s: %s" % (exc.code, body or exc.reason)) from exc
 
     def available(self):
         """探测本地服务是否可用。"""

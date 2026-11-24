@@ -35,7 +35,13 @@ def parse_target(target):
 def plan(target):
     info = parse_target(target)
     category = info["category"]
-    methods = search(category=category) if category else []
+    methods = search(query=target, category=category, top_k=3) if category else []
+    # 学到的方法其 category 是模型自由生成的(如"高足杯"), 不在固定类目表里;
+    # 这里再取一次全库语义第一名, 若它比同类第一名更相似就用它, 避免学习成果永远用不上。
+    sem_top = search(query=target, top_k=1) if target else []
+    if sem_top and sem_top[0].get("_score", 0) >= 0.3 and \
+            (not methods or sem_top[0].get("_score", 0) > methods[0].get("_score", 0)):
+        methods = sem_top + methods
     if methods:
         method = methods[0]
         params = dict(method.get("params", {}))
