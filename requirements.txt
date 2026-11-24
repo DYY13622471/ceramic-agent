@@ -1,0 +1,5 @@
+# 主流程（record / learn / model）纯标准库，无需安装任何包。
+# 只有从音视频自学的分支（learning/bili_learn.py）需要下面两项。
+
+yt-dlp>=2024.8.6
+faster-whisper>=1.0.3
