@@ -19,6 +19,7 @@ store/tmp_download/
 store/models/
 store/method_library.json
 store/*.png
+store/refine_log_*.jsonl
 generated/*
 !generated/.gitkeep
 
